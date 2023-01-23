@@ -16,7 +16,6 @@ sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig
 swapoff -a
 sed -i '/swap/ s/^/#/' /etc/fstab
 
-
 timedatectl set-timezone America/Sao_Paulo
 sed -i '1 s/^/server a.st1.ntp.br iburst\nserver b.st1.ntp.br iburst\nserver c.st1.ntp.br iburst\nserver d.st1.ntp.br iburst\nserver a.ntp.br iburst\nserver b.ntp.br iburst\nserver c.ntp.br iburst\nserver gps.ntp.br iburst\n/' /etc/chrony.conf
 systemctl restart chronyd
