@@ -78,10 +78,10 @@ EOF
 
 yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/endpoint-repo.x86_64.rpm
 yum update -y git
-cp /usr/share/doc/git-2.38.1/contrib/completion/git-completion.bash /etc/bash_completion.d/
-cp /usr/share/doc/git-2.38.1/contrib/completion/git-prompt.sh /etc/bash_completion.d/
-echo "export GIT_PS1_SHOWDIRTYSTATE=1" >> /etc/bashrc
-echo "export PS1=\"[\u@\h \W \$(__git_ps1 \" (%s)\")]\\\\$ \"" >> /etc/bashrc
+sudo cp /usr/share/doc/git-2.38.1/contrib/completion/git-completion.bash /etc/bash_completion.d/
+sudo cp /usr/share/doc/git-2.38.1/contrib/completion/git-prompt.sh /etc/bash_completion.d/
+sudo echo "export GIT_PS1_SHOWDIRTYSTATE=1" >> /etc/bashrc
+sudo echo "export PS1=\"[\u@\h \W \$(__git_ps1 \" (%s)\")]\\\\$ \"" >> /etc/bashrc
 yum install -y golang cri ebtables ipset docker-ce containerd.io kubelet kubeadm kubectl --disableexcludes=kubernetes 
 
 systemctl enable --now docker

@@ -17,11 +17,21 @@ Vagrant.configure("2") do |config|
     vb.memory = 2048
     vb.cpus = 2
   end
+  $script = <<-SCRIPT
+  cat /vagrant/config/rclocal | sudo tee -a /etc/rc.local
+  chmod 755 /etc/rc.local
+  sudo yum-config-manager --add-repo http://download.virtualbox.org/virtualbox/rpm/rhel/virtualbox.repo
+  sudo yum install -y -q epel-release VirtualBox-7.0
+  sudo yum update -y -q
+  SCRIPT
 
   config.vm.define "master" do |master|
     master.vm.hostname = "master-node"
     master.vm.network "private_network", ip: "192.168.33.10"
-    master.vm.provision "shell", path: "scripts/basic.sh"
+    # master.vm.provision "shell", inline: $script
+    # master.vm.provision "shell", reboot: true
+    # master.vm.provision "shell", path: "scripts/basic.sh"
+    # master.vm.provision "shell", path: "scripts/master.sh"
   end
 
   # config.vm.define "node1" do |node1|
@@ -35,8 +45,8 @@ Vagrant.configure("2") do |config|
   # end
 
   # (1..2).each do |i|
-  #   config.vm.define "node-#{i}" do |node|
-  #     node.vm.hostname = "node-#{i}"
+  #   config.vm.define "worker-node-#{i}" do |node|
+  #     node.vm.hostname = "worker-node-#{i}"
   #     node.vm.network "private_network", ip: "192.168.33.1#{i}"
   #   end
   # end
