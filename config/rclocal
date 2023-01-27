@@ -1,6 +1,0 @@
-modprobe dummy
-ip link add vip1 type dummy
-ip link set name vip1 dev dummy0
-for i in {100..200} ; do
-  ip addr add 192.168.33.${i}/24 brd + dev vip1 label vip1:${i}
-done

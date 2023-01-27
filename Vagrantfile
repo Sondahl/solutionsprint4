@@ -1,6 +1,11 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+# required_plugins = %w( vagrant-vbguest )
+# required_plugins.each do |plugin|
+#   system "vagrant plugin install #{plugin}" unless Vagrant.has_plugin? plugin
+# end
+
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
 # backwards compatibility). Please don't change it unless you know what
@@ -12,25 +17,35 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
+
   config.vm.box = "centos/7"
-  config.vm.provider "virtualbox" do |vb|
-    vb.memory = 2048
-    vb.cpus = 2
-  end
+  # config.vm.provider "virtualbox" do |vb|
+  #   vb.memory = 2048
+  #   vb.cpus = 2
+  # end
+
   $script = <<-SCRIPT
-  cat /vagrant/config/rclocal | sudo tee -a /etc/rc.local
-  chmod 755 /etc/rc.local
-  sudo yum-config-manager --add-repo http://download.virtualbox.org/virtualbox/rpm/rhel/virtualbox.repo
-  sudo yum install -y -q epel-release VirtualBox-7.0
-  sudo yum update -y -q
+  sudo yum remove -y -q open-vm-tools
+  sudo yum -y -q upgrade
+  sudo yum install -y -q kernel-devel kernel-headers dkms gcc patch glibc-headers glibc-devel
+  sudo mkdir -p /etc/vbox/
+  echo '* 0.0.0.0/0 ::/0' | sudo tee -a /etc/vbox/networks.conf
   SCRIPT
 
   config.vm.define "master" do |master|
+    master.vm.provider "virtualbox" do |vb|
+      vb.memory = 4096
+      vb.cpus = 4
+      vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
+    end
     master.vm.hostname = "master-node"
     master.vm.network "private_network", ip: "192.168.33.10"
-    # master.vm.provision "shell", inline: $script
-    # master.vm.provision "shell", reboot: true
+    # master.vm.network "private_network", ip: "192.168.33.10", virtualbox__intnet: true
+    # master.vm.network "public_network", use_dhcp_assigned_default_route: true
+    master.vm.provision "shell", inline: $script
+    master.vm.provision "shell", reboot: true
     # master.vm.provision "shell", path: "scripts/basic.sh"
+    # master.vm.provision "shell", reboot: true
     # master.vm.provision "shell", path: "scripts/master.sh"
   end
 
