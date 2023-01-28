@@ -18,35 +18,36 @@ Vagrant.configure("2") do |config|
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
 
-  config.vm.box = "centos/7"
-  # config.vm.provider "virtualbox" do |vb|
-  #   vb.memory = 2048
-  #   vb.cpus = 2
-  # end
+  # config.vm.box = "centos/7"
+  config.vm.box = "sondahl/centos7-2009"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = 2048
+    vb.cpus = 2
+  end
 
-  $script = <<-SCRIPT
-  sudo yum remove -y -q open-vm-tools
-  sudo yum -y -q upgrade
-  sudo yum install -y -q kernel-devel kernel-headers dkms gcc patch glibc-headers glibc-devel
-  sudo mkdir -p /etc/vbox/
-  echo '* 0.0.0.0/0 ::/0' | sudo tee -a /etc/vbox/networks.conf
-  SCRIPT
+  # $script = <<-SCRIPT
+  # sudo yum remove -y -q open-vm-tools
+  # sudo yum -y -q upgrade
+  # sudo yum install -y -q kernel-devel kernel-headers dkms gcc patch glibc-headers glibc-devel
+  # sudo mkdir -p /etc/vbox/
+  # echo '* 0.0.0.0/0 ::/0' | sudo tee -a /etc/vbox/networks.conf
+  # SCRIPT
 
   config.vm.define "master" do |master|
-    master.vm.provider "virtualbox" do |vb|
-      vb.memory = 4096
-      vb.cpus = 4
-      vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
-    end
+    # master.vm.provider "virtualbox" do |vb|
+    #   vb.memory = 4096
+    #   vb.cpus = 4
+    #   vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
+    # end
     master.vm.hostname = "master-node"
     master.vm.network "private_network", ip: "192.168.33.10"
     # master.vm.network "private_network", ip: "192.168.33.10", virtualbox__intnet: true
     # master.vm.network "public_network", use_dhcp_assigned_default_route: true
-    master.vm.provision "shell", inline: $script
-    master.vm.provision "shell", reboot: true
-    # master.vm.provision "shell", path: "scripts/basic.sh"
+    # master.vm.provision "shell", inline: $script
     # master.vm.provision "shell", reboot: true
-    # master.vm.provision "shell", path: "scripts/master.sh"
+    master.vm.provision "shell", path: "scripts/basic.sh"
+    master.vm.provision "shell", reboot: true
+    master.vm.provision "shell", path: "scripts/master.sh", privileged: false
   end
 
   # config.vm.define "node1" do |node1|

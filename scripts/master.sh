@@ -29,9 +29,10 @@ EOF
 cat << EOF | sudo tee /etc/sysconfig/kubelet
 KUBELET_EXTRA_ARGS=--node-ip=192.168.33.10
 EOF
-sed -i '/RestartSec/ a EnvironmentFile=-/etc/sysconfig/kubelet' /usr/lib/systemd/system/kubelet.service
+sudo sed -i '/RestartSec/ a EnvironmentFile=-/etc/sysconfig/kubelet' /usr/lib/systemd/system/kubelet.service
 sudo systemctl daemon-reload 
 sudo systemctl enable run-at-startup.service
+sudo systemctl start run-at-startup.service
 sudo systemctl restart kubelet
 
 getPodUp(){
@@ -109,18 +110,16 @@ getPodRunning k8s-app=kube-dns kube-system
 #  sed -e "s/strictARP: false/strictARP: true/" |\
 #  sed -e "s/mode: \"\"/mode: \"ipvs\"/" |\
 #  kubectl diff -f - -n kube-system
-
+#
 # kubectl get configmap kube-proxy -n kube-system -o yaml |\
 #  sed -e "s/strictARP: false/strictARP: true/" |\
 #  sed -e "s/mode: \"\"/mode: \"ipvs\"/" |\
 #  kubectl apply -f - -n kube-system
-
+#
 # kubectl delete pods -l k8s-app=kube-proxy -n kube-system
 # getPodUp k8s-app=kube-proxy kube-system
 # getPodRunning k8s-app=kube-proxy kube-system
-############################
-
-############################
+#
 # kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 # kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.7/config/manifests/metallb-native.yaml
 # getPodUp component=controller metallb-system
@@ -130,7 +129,7 @@ getPodRunning k8s-app=kube-dns kube-system
 # kubectl apply -f /vagrant/config/deployment_l2.yaml
 # getPodUp app=nginx default
 # getPodRunning app=nginx default
-
+#
 # kubectl apply -f https://raw.githubusercontent.com/scriptcamp/kubeadm-scripts/main/manifests/metrics-server.yaml
 # getPodUp k8s-app=metrics-server kube-system
 # getPodRunning k8s-app=metrics-server kube-system
