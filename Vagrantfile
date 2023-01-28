@@ -1,53 +1,38 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# required_plugins = %w( vagrant-vbguest )
-# required_plugins.each do |plugin|
-#   system "vagrant plugin install #{plugin}" unless Vagrant.has_plugin? plugin
-# end
+WORKERS = 2
+IPBASE = "192.168.33."
+FIRSTIP = 10
 
-# All Vagrant configuration is done below. The "2" in Vagrant.configure
-# configures the configuration version (we support older styles for
-# backwards compatibility). Please don't change it unless you know what
-# you're doing.
 Vagrant.configure("2") do |config|
-  # The most common configuration options are documented and commented below.
-  # For a complete reference, please see the online documentation at
-  # https://docs.vagrantup.com.
 
-  # Every Vagrant development environment requires a box. You can search for
-  # boxes at https://vagrantcloud.com/search.
-
+  $hosts = <<-SHELL
+    echo "127.0.0.1     localhost localhost.localdomain" > /etc/hosts
+    echo "$IPBASE$((FIRSTIP)) master-node" >> /etc/hosts
+    for (( c=1; c<=$WORKERS; c++ )) ; do
+      ip=$(($FIRSTIP+$c))
+      echo "$IPBASE$ip node-$c worker-node-$c" >> /etc/hosts
+    done
+  SHELL
+  
   # config.vm.box = "centos/7"
-  config.vm.box = "sondahl/centos7-2009"
+  # config.vm.box = "sondahl/centos7-2009"
+  config.vm.box = "sondahl/solutionsprint4"
   config.vm.provider "virtualbox" do |vb|
     vb.memory = 2048
     vb.cpus = 2
   end
-
-  # $script = <<-SCRIPT
-  # sudo yum remove -y -q open-vm-tools
-  # sudo yum -y -q upgrade
-  # sudo yum install -y -q kernel-devel kernel-headers dkms gcc patch glibc-headers glibc-devel
-  # sudo mkdir -p /etc/vbox/
-  # echo '* 0.0.0.0/0 ::/0' | sudo tee -a /etc/vbox/networks.conf
-  # SCRIPT
-
+  
   config.vm.define "master" do |master|
-    # master.vm.provider "virtualbox" do |vb|
-    #   vb.memory = 4096
-    #   vb.cpus = 4
-    #   vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
-    # end
     master.vm.hostname = "master-node"
-    master.vm.network "private_network", ip: "192.168.33.10"
-    # master.vm.network "private_network", ip: "192.168.33.10", virtualbox__intnet: true
-    # master.vm.network "public_network", use_dhcp_assigned_default_route: true
-    # master.vm.provision "shell", inline: $script
+    # master.vm.provision "shell", env: {"IPBASE" => IPBASE}, inline: "echo $IPBASE"
+    # master.vm.provision "shell", env: {"FIRSTIP" => FIRSTIP}, inline: "echo $FIRSTIP"
+    # master.vm.provision "shell", env: {"WORKERS" => WORKERS}, inline: "echo $WORKERS"
+    master.vm.network "private_network", ip: IPBASE + "#{FIRSTIP}"
+    master.vm.provision "shell", env: {"IPBASE" => IPBASE, "FIRSTIP" => FIRSTIP, "WORKERS" => WORKERS}, inline: $hosts
     # master.vm.provision "shell", reboot: true
-    master.vm.provision "shell", path: "scripts/basic.sh"
-    master.vm.provision "shell", reboot: true
-    master.vm.provision "shell", path: "scripts/master.sh", privileged: false
+    # master.vm.provision "shell", path: "scripts/master.sh", privileged: false
   end
 
   # config.vm.define "node1" do |node1|

@@ -6,16 +6,16 @@ cat << EOF | tee /etc/modules-load.d/99-k8s-modules.conf
 br_netfilter
 overlay
 EOF
-modprobe br_netfilter
-modprobe overlay
+# modprobe br_netfilter
+# modprobe overlay
 
-cat << EOF | tee /etc/hosts
-127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
-::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
-192.168.33.10 master-node
-192.168.33.11 node-1 worker-node-1
-192.168.33.12 node-2 worker-node-2
-EOF
+# cat << EOF | tee /etc/hosts
+# 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+# ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+# 192.168.33.10 master-node
+# 192.168.33.11 node-1 worker-node-1
+# 192.168.33.12 node-2 worker-node-2
+# EOF
 
 setenforce 0
 sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
@@ -26,14 +26,14 @@ timedatectl set-timezone America/Sao_Paulo
 sed -i '1 s/^/server gps.ntp.br iburst\n/' /etc/chrony.conf
 sed -i '1 s/^/server c.st1.ntp.br iburst\nserver d.st1.ntp.br iburst\n/' /etc/chrony.conf
 sed -i '1 s/^/server a.st1.ntp.br iburst\nserver b.st1.ntp.br iburst\n/' /etc/chrony.conf
-systemctl restart chronyd
+# systemctl restart chronyd
 
 cat << EOF | tee /etc/sysctl.d/99-k8s-sysctl.conf
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 net.ipv4.ip_forward = 1
 EOF
-sysctl --system
+# sysctl --system
 
 systemctl enable --now firewalld
 systemctl start firewalld
