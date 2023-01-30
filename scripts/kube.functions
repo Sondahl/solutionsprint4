@@ -1,0 +1,53 @@
+# -*-Shell-script-*-
+
+usage(){
+  if [ $# -ne 2 ] ; then
+  echo "Usage: ${FUNCNAME[0]} <label> <namespace>"
+  fi
+}
+kubecmd(){
+  kubectl get pods -l $1 -n $2 -o jsonpath='{ .items[].status.phase }' 
+}
+testPodRunning(){
+  usage $*
+  if [ $(kubecmd $1 $2 2>/dev/null) == 'Running' ]
+  then 
+    printf "%s: %s \n" "$1" "Running";
+  else
+    getPodRunning $1 $2
+    showPodRunning $1 $2
+  fi
+}
+getPodUp(){
+  timeout=0
+  while [ $(kubectl get pods -l $1 -n $2 -o jsonpath='{ .items[].status.phase }' 2>/dev/null | wc -m) = '0' ]
+  do 
+    { printf .; sleep 1; }
+  done
+}
+getPodPending(){
+  while [ $(kubectl get pods -l $1 -n $2 -o jsonpath='{ .items[].status.phase }' 2>/dev/null) != 'Pending' ]
+  do 
+    { printf .; sleep 1; }
+  done
+}
+getPodRunning(){
+  while [ $(kubectl get pods -l $1 -n $2 -o jsonpath='{ .items[].status.phase }' 2>/dev/null) != 'Running' ]
+  do 
+    { printf .; sleep 1; }
+  done
+}
+showPodRunning(){
+  if [ $(kubectl get pods -l $1 -n $2 -o jsonpath='{ .items[].status.phase }' 2>/dev/null) == 'Running' ]
+  then 
+    printf "%s: %s \n" "$1" "Running";
+  else
+    getPodRunning $1 $2
+    showPodRunning $1 $2
+  fi
+}
+waitPodUp(){
+  getPodUp $1 $2
+  getPodRunning $1 $2
+  showPodRunning $1 $2
+}
