@@ -1,33 +1,42 @@
 #!/bin/bash
 
-{
-unalias cp
-cp -f /vagrant/config/vagrant_id_rsa /home/vagrant/.ssh/id_rsa
-cp -f /vagrant/config/vagrant_id_rsa.pub /home/vagrant/.ssh/id_rsa.pub 
-cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
+lbrange=($lbrange)
 
-sudo mkdir -p /root/.ssh
-sudo cp -f /vagrant/config/root_id_rsa /root/.ssh/id_rsa
-sudo cp -f /vagrant/config/root_id_rsa.pub /root/.ssh/id_rsa.pub 
-cat /root/.ssh/id_rsa.pub | sudo tee /root/.ssh/authorized_keys >/dev/null 2>&1
-sudo chmod 700 /root/.ssh
-sudo chmod 600 /root/.ssh/id_rsa
-sudo chmod 644 /root/.ssh/id_rsa.pub
-
-cat <<EOF2 | tee -a /home/vagrant/.bashrc
+echo "============================================="
+echo "          Iniciando script workers"
+echo "============================================="
+echo "============================================="
+echo "           Configurando variables"
+echo "============================================="
+cat <<EOF >> /home/vagrant/.bashrc
 alias k=kubectl
 alias kwatch="watch kubectl get nodes,services,pods --all-namespaces -o wide --show-labels"
-EOF2
-. $HOME/.bashrc
+EOF
+source $HOME/.bashrc
 sudo cp -f /vagrant/scripts/kube.functions /etc/bash_completion.d/
-. /etc/bash_completion.d/kube.functions
-mkdir -p /home/vagrant/.kube
-echo "KUBELET_EXTRA_ARGS=\"--node-ip=$nodeip\"" | sudo tee /etc/sysconfig/kubelet
+sudo chmod 644 /etc/bash_completion.d/kube.functions
+source /etc/bash_completion.d/kube.functions
+echo "KUBELET_EXTRA_ARGS=\"--node-ip=$nodeip\"" | sudo tee /etc/sysconfig/kubelet >/dev/null 2>&1
+sudo sed -i '/ExecStart/ a EnvironmentFile=-/etc/sysconfig/kubelet' /usr/lib/systemd/system/kubelet.service
+# sudo sed -i 's/kubelet/& \$KUBELET_EXTRA_ARGS/' /usr/lib/systemd/system/kubelet.service
 
-sudo kubeadm join 192.168.33.10:6443 --token v8jyno.rpunnjwoabc0a8d4 --discovery-token-ca-cert-hash sha256:68817bc1cecf6af4b7f28a5bbb68711d68b237c010bd7754e8470f2dc6fb79b7 
+echo "============================================="
+echo "            Reload systemctl"
+echo "============================================="
+sudo systemctl daemon-reload 
+sudo systemctl restart kubelet.service 
+
+echo "============================================="
+echo "        Configurando Kubernetes"
+echo "============================================="
+/vagrant/scripts/join-workers.sh
+mkdir -p /home/vagrant/.kube
 cp -f /vagrant/config/admin.conf /home/vagrant/.kube/config
-echo "export KUBECONFIG=/etc/kubernetes/admin.conf" | sudo tee -a /root/.bashrc
 sudo chown -R vagrant:vagrant /home/vagrant/.kube
+echo "export KUBECONFIG=/etc/kubernetes/admin.conf" | sudo tee -a /root/.bashrc >/dev/null 2>&1
 kubectl label node $(hostname -s) node-role.kubernetes.io/worker=worker
-}
-exit $?
+waitPodUp k8s-app=kube-proxy kube-system
+
+echo "============================================="
+echo "        Finalizando script workers"
+echo "============================================="
