@@ -1,41 +1,57 @@
 #!/bin/bash
 
-lbrange=($lbrange)
-
 echo "============================================="
 echo "          Iniciando script workers"
 echo "============================================="
-echo "============================================="
-echo "           Configurando variables"
-echo "============================================="
-cat <<EOF >> /home/vagrant/.bashrc
-alias k=kubectl
-alias kwatch="watch kubectl get nodes,services,pods --all-namespaces -o wide --show-labels"
-EOF
-source $HOME/.bashrc
-sudo cp -f /vagrant/scripts/kube.functions /etc/bash_completion.d/
-sudo chmod 644 /etc/bash_completion.d/kube.functions
 source /etc/bash_completion.d/kube.functions
-echo "KUBELET_EXTRA_ARGS=\"--node-ip=$nodeip\"" | sudo tee /etc/sysconfig/kubelet >/dev/null 2>&1
-sudo sed -i '/ExecStart/ a EnvironmentFile=-/etc/sysconfig/kubelet' /usr/lib/systemd/system/kubelet.service
-# sudo sed -i 's/kubelet/& \$KUBELET_EXTRA_ARGS/' /usr/lib/systemd/system/kubelet.service
+dev=$(ip route list | grep $ipbase | awk '{ print $3 }')
+export KUBE_PROXY_MODE=ipvs
+
+echo "============================================="
+echo "          Configurando MetalLB VIPs"
+echo "============================================="
+echo "OPTS=\"${lbrange[0]} ${lbrange[1]} $dev\"" | sudo tee /etc/sysconfig/metalLBVips >/dev/null
+sudo cp -f /vagrant/scripts/metalLBVips /usr/local/bin/
+sudo chmod 755 /usr/local/bin/metalLBVips
+sudo cp -f /vagrant/config/metalLBVips.service /etc/systemd/system/
 
 echo "============================================="
 echo "            Reload systemctl"
 echo "============================================="
 sudo systemctl daemon-reload 
-sudo systemctl restart kubelet.service 
+sudo systemctl -q enable metalLBVips.service 
+sudo systemctl -q start metalLBVips.service
 
 echo "============================================="
 echo "        Configurando Kubernetes"
 echo "============================================="
-/vagrant/scripts/join-workers.sh
+bash /vagrant/scripts/join-workers.sh
+
 mkdir -p /home/vagrant/.kube
 cp -f /vagrant/config/admin.conf /home/vagrant/.kube/config
 sudo chown -R vagrant:vagrant /home/vagrant/.kube
-echo "export KUBECONFIG=/etc/kubernetes/admin.conf" | sudo tee -a /root/.bashrc >/dev/null 2>&1
-kubectl label node $(hostname -s) node-role.kubernetes.io/worker=worker
+
+kubectl label node $(hostname -s) node-role.kubernetes.io/worker=
 waitPodUp k8s-app=kube-proxy kube-system
+waitPodUp name=weave-net kube-system
+
+echo "============================================="
+echo "         Configurando MetalLB VIPs"
+echo "============================================="
+echo "OPTS=\"$ipbase $lbfirstip $(($lbfirstip+$lbipsperhost)) $dev\"" | sudo tee /etc/sysconfig/metalLBVips >/dev/null
+sudo cp -f /vagrant/scripts/metalLBVips /usr/local/bin/
+sudo chmod 755 /usr/local/bin/metalLBVips
+sudo cp -f /vagrant/config/metalLBVips.service /etc/systemd/system/
+sudo systemctl daemon-reload 
+sudo systemctl -q enable metalLBVips.service 
+sudo systemctl -q start metalLBVips.service
+
+echo "============================================="
+echo "  Configurando Pool para o host: $(hostname -s)"
+echo "============================================="
+rm -f /vagrant/config/pool-$(hostname -s).yaml
+poll="$ipbase.$lbfirstip-$ipbase.$(($lbfirstip+$lbipsperhost))"
+sed "s/IPPOLL/$poll/g;s/NODENAME/$(hostname -s)/g;s/INTERFACE/$dev/g" /vagrant/config/metallb-base.yaml > /vagrant/config/pool-$(hostname -s).yaml
 
 echo "============================================="
 echo "        Finalizando script workers"

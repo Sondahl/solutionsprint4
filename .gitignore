@@ -1,4 +1,10 @@
-_Vagrantfile
 .vagrant
-include
-*id_rsa*
+dashboard_loadbalancer.sh
+istio_run_loadbalancer.sh
+scripts/join-workers.sh
+config/metallb-poll.yaml
+config/admin.conf*
+*admin.conf*
+ignore
+ignore/*
+config/admin.conf

@@ -1,17 +1,19 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# ENV['VAGRANT_EXPERIMENTAL'] = "dependency_provisioners"
-
 required_plugins = %w( vagrant-vbguest )
 required_plugins.each do |plugin|
   system "vagrant plugin install #{plugin}" unless Vagrant.has_plugin? plugin
 end
 
-WORKERS = 0
-IPBASE = "192.168.33."
-FIRSTIP = 10
-LBRANGE = [100, 110]
+workers = 2
+ipbase = "192.168.33"
+firstip = 10
+lbfirstip = 100
+lbipsperhost = 9
+
+vmsmem = 2048
+vmscpu = 2
 
 Vagrant.configure("2") do |config|
 
@@ -19,68 +21,87 @@ Vagrant.configure("2") do |config|
   config.vm.box_check_update = true
   config.vm.provider "virtualbox" do |vb|
     vb.linked_clone = true
-    vb.memory = 2048
-    vb.cpus = 2
+    vb.memory = vmsmem
+    vb.cpus = vmscpu
     vb.customize ["modifyvm", :id, "--groups", "/kubernetes"]
     vb.customize ["modifyvm", :id, "--nic-type2", "82545EM"]
     vb.customize ["modifyvm", :id, "--audio", "none"]
-    vb.customize ["modifyvm", :id, "--graphicscontroller", "vmsvga"]
+    vb.customize ["modifyvm", :id, "--page-fusion", "on"]
   end
   config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
 
   config.vm.define "master", primary: true do |master|
-    master.vm.hostname = "master-node"
-    master.vm.network "private_network", ip: IPBASE + "#{FIRSTIP}"
+    # master.vm.provider "virtualbox" do |vb|
+    #   vb.cpus = "#{vmscpu * 2}"
+    # end
+    master.vm.hostname = "master.local"
+    master.vm.network "private_network", ip: ipbase + ".#{firstip}"
 
-    master.vm.provision "master1", type: "shell",
-      env: {"ipbase" => IPBASE, "firstip" => FIRSTIP, "workers" => WORKERS},
-      inline: $hosts
-
-    master.vm.provision "master2", type: "shell",
-      env: {"ipbase" => IPBASE, "lbrange" => LBRANGE.join(" "), "nodeip" => IPBASE + "#{FIRSTIP}"},
+    master.vm.provision "master-common", type: "shell",
+      env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
+        "nodeip" => ipbase + ".#{firstip}",
+        "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},
+      path: "scripts/common.sh", privileged: true
+    
+    master.vm.provision "master-master", type: "shell",
+      env: {"nodeip" => ipbase + ".#{firstip}", "workers" => workers},
       path: "scripts/master.sh", privileged: false
 
-    # master.vm.provision "master3", type: "shell",
-    #   env: {"ipbase" => IPBASE, "lbrange" => LBRANGE.join(" "), "workers" => WORKERS},
-    #   path: "scripts/finishing.sh", privileged: false
+    if workers < 1
+      master.vm.provision "reset", type: "shell", reset: true
+      master.vm.provision "master-finishing", type: "shell",
+        path: "scripts/finishing.sh", privileged: false
+    end
+    lbfirstip += lbipsperhost + 1
   end
-  (1..WORKERS).each do |i|
-    config.vm.define "worker-node-#{i}" do |node|
-      node.vm.hostname = "worker-node-#{i}"
-      node.vm.network "private_network", ip: IPBASE + "#{FIRSTIP + i}"
+  (1...workers).each do |i|
+    config.vm.define "node-#{i}" do |node|
+      node.vm.provider "virtualbox" do |vb|
+        vb.cpus = "#{vmscpu * 2}"
+        # vb.memory = "#{vmsmem * 2}"
+      end
+      node.vm.hostname = "node-#{i}.local"
+      node.vm.network "private_network", ip: ipbase + ".#{firstip + i}"
 
-      node.vm.provision "worker#{i}-1", type: "shell",
-        env: {"ipbase" => IPBASE, "firstip" => FIRSTIP, "workers" => WORKERS},
-        inline: $hosts
+      node.vm.provision "worker#{i}-common", type: "shell",
+        env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
+          "nodeip" => ipbase + ".#{firstip + i}",
+          "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},
+        path: "scripts/common.sh", privileged: true
 
-      node.vm.provision "worker#{i}-2", type: "shell",
-        env: {"nodeip" => IPBASE + "#{FIRSTIP + i}", "lbrange" => LBRANGE.join(" "),
-        "workers" => WORKERS, "ipbase" => IPBASE},
+      node.vm.provision "reset", type: "shell", reset: true
+      node.vm.provision "worker#{i}-workers", type: "shell",
+        env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
+          "nodeip" => ipbase + ".#{firstip + i}",
+          "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},
         path: "scripts/workers.sh", privileged: false
+      lbfirstip += lbipsperhost + 1
     end
   end
-  # config.vm.define "node-#{WORKERS}" do |node|
-  #   node.vm.hostname = "node-#{WORKERS}.local"
-  #   node.vm.network "private_network", ip: IPBASE + "#{FIRSTIP + WORKERS}"
+  if workers >= 1
+    config.vm.define "node-#{workers}" do |node|
+      node.vm.provider "virtualbox" do |vb|
+        vb.cpus = "#{vmscpu * 2}"
+        # vb.memory = "#{vmsmem * 2}"
+      end
+      node.vm.hostname = "node-#{workers}.local"
+      node.vm.network "private_network", ip: ipbase + ".#{firstip + workers}"
 
-  #   # node.vm.provision "worker#{WORKERS}-1", type: "shell",
-  #   #   env: {"ipbase" => IPBASE, "firstip" => FIRSTIP, "workers" => WORKERS},
-  #   #   inline: $hosts
+      node.vm.provision "worker#{workers}-common", type: "shell",
+        env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
+          "nodeip" => ipbase + ".#{firstip + workers}",
+          "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},
+        path: "scripts/common.sh", privileged: true
 
-  #   # node.vm.provision "worker#{WORKERS}-2", type: "shell",
-  #   #   env: {"nodeip" => IPBASE + "#{FIRSTIP + i}", "lbrange" => LBRANGE.join(" "),
-  #   #   "workers" => WORKERS, "ipbase" => IPBASE},
-  #   #   path: "scripts/workers.sh", privileged: false
-  # end
+      node.vm.provision "reset", type: "shell", reset: true
+      node.vm.provision "worker#{workers}-workers", type: "shell",
+        env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
+          "nodeip" => ipbase + ".#{firstip + workers}",
+          "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},  
+        path: "scripts/workers.sh", privileged: false
+
+      node.vm.provision "worker#{workers}-finishing", type: "shell",
+        path: "scripts/finishing.sh", privileged: false
+    end
+  end
 end
-
-$hosts = <<-SHELL
-echo "127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4" > /etc/hosts
-echo "::1         localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
-echo "$ipbase$((firstip)) master-node master" >> /etc/hosts
-for (( c=1; c<=$workers; c++ )) ; do
-  ip=$(($firstip+$c))
-  echo "$ipbase$ip worker-node-$c node-$c " >> /etc/hosts
-done
-SHELL
-

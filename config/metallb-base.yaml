@@ -1,0 +1,22 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: pool-NODENAME
+  namespace: metallb-system
+spec:
+  addresses:
+  - IPPOLL
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: advertisement-master
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - pool-NODENAME
+  nodeSelectors:
+  - matchLabels:
+      kubernetes.io/hostname: NODENAME
+  interfaces:
+  - INTERFACE

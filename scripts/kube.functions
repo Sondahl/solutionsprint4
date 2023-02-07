@@ -1,4 +1,3 @@
-#!/bin/bash
 # -*-Shell-script-*-
 
 kubecmd(){
@@ -55,6 +54,7 @@ waitPodUp(){
     return 14
   else
     getPodUp $*
+    sleep 1
     getPodRunning $*
     showPodPhase $*
   fi
