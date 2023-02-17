@@ -42,28 +42,25 @@ done
 waitPodUp app=metallb metallb-system
 
 # echo "============================================="
+# echo "          Instalando o dashboard"
+# echo "============================================="
+# wget -nv https://raw.githubusercontent.com/tonanuvem/k8s-exemplos/master/dashboard_loadbalancer.sh
+# sh dashboard_loadbalancer.sh
+# waitPodUp k8s-app=kubernetes-dashboard kubernetes-dashboard
+
+# echo "============================================="
+# echo "          Instalando o WaveScope"
+# echo "============================================="
+# kubectl apply -f https://github.com/weaveworks/scope/releases/download/v1.13.2/k8s-scope.yaml
+# waitPodUp app=weave-scope weave
+# kubectl patch svc weave-scope-app -n weave -p '{"spec": {"type": "LoadBalancer"}}'
+# waitPodUp app=weave-scope weave
+
+# echo "============================================="
 # echo "          Instalando o Metrics pod"
 # echo "============================================="
-# ##########################
 # kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 # waitPodUp k8s-app=metrics-server kube-system
-# ###########################
-
-echo "============================================="
-echo "          Instalando o WaveScope"
-echo "============================================="
-kubectl apply -f https://github.com/weaveworks/scope/releases/download/v1.13.2/k8s-scope.yaml
-waitPodUp app=weave-scope weave
-kubectl patch svc weave-scope-app -n weave -p '{"spec": {"type": "LoadBalancer"}}'
-waitPodUp app=weave-scope weave
-
-
-echo "============================================="
-echo "          Instalando o dashboard"
-echo "============================================="
-wget -nv https://raw.githubusercontent.com/tonanuvem/k8s-exemplos/master/dashboard_loadbalancer.sh
-sh dashboard_loadbalancer.sh
-waitPodUp k8s-app=kubernetes-dashboard kubernetes-dashboard
 
 # echo "============================================="
 # echo "      Instalando o dashboard-opertor"
@@ -75,20 +72,20 @@ waitPodUp k8s-app=kubernetes-dashboard kubernetes-dashboard
 # kubectl create -f https://operatorhub.io/install/metallb-operator.yaml
 ############################
 
-echo "============================================="
-echo "             Instalando o istio"
-echo "============================================="
-wget -nv https://raw.githubusercontent.com/tonanuvem/k8s-exemplos/master/istio_run_loadbalancer.sh -P $HOME
-sh $HOME/istio_run_loadbalancer.sh
-PASTA=$(ls $HOME | grep istio-)
-cd $PASTA
-kubectl apply -f ./samples/bookinfo/platform/kube/bookinfo.yaml
-kubectl apply -f ./samples/bookinfo/networking/bookinfo-gateway.yaml 
-kubectl apply -f ./samples/bookinfo/networking/destination-rule-all.yaml
-# kubectl apply -f ./samples/bookinfo/networking/virtual-service-reviews-test-v2.yaml
-# kubectl apply -f ./samples/bookinfo/networking/virtual-service-reviews-80-20.yaml
-# kubectl apply -f ./samples/bookinfo/networking/virtual-service-reviews-50-v3.yaml
-cd
+# echo "============================================="
+# echo "             Instalando o istio"
+# echo "============================================="
+# wget -nv https://raw.githubusercontent.com/tonanuvem/k8s-exemplos/master/istio_run_loadbalancer.sh -P $HOME
+# sh $HOME/istio_run_loadbalancer.sh
+# PASTA=$(ls $HOME | grep istio-)
+# cd $PASTA
+# kubectl apply -f ./samples/bookinfo/platform/kube/bookinfo.yaml
+# kubectl apply -f ./samples/bookinfo/networking/bookinfo-gateway.yaml 
+# kubectl apply -f ./samples/bookinfo/networking/destination-rule-all.yaml
+# # kubectl apply -f ./samples/bookinfo/networking/virtual-service-reviews-test-v2.yaml
+# # kubectl apply -f ./samples/bookinfo/networking/virtual-service-reviews-80-20.yaml
+# # kubectl apply -f ./samples/bookinfo/networking/virtual-service-reviews-50-v3.yaml
+# cd
 
 # ############################
 # git clone https://github.com/microservices-demo/microservices-demo.git

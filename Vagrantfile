@@ -6,7 +6,7 @@ required_plugins.each do |plugin|
   system "vagrant plugin install #{plugin}" unless Vagrant.has_plugin? plugin
 end
 
-workers = 2
+workers = 1
 ipbase = "192.168.33"
 firstip = 10
 lbfirstip = 100
@@ -16,7 +16,6 @@ vmsmem = 2048
 vmscpu = 2
 
 Vagrant.configure("2") do |config|
-
   config.vm.box = "sondahl/solutionsprint4"
   config.vm.box_check_update = true
   config.vm.provider "virtualbox" do |vb|
@@ -39,12 +38,13 @@ Vagrant.configure("2") do |config|
 
     master.vm.provision "master-common", type: "shell",
       env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
-        "nodeip" => ipbase + ".#{firstip}",
-        "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},
+        "nodeip" => ipbase + ".#{firstip}"},
       path: "scripts/common.sh", privileged: true
     
     master.vm.provision "master-master", type: "shell",
-      env: {"nodeip" => ipbase + ".#{firstip}", "workers" => workers},
+      env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
+          "nodeip" => ipbase + ".#{firstip}",
+          "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},
       path: "scripts/master.sh", privileged: false
 
     if workers < 1
@@ -52,52 +52,47 @@ Vagrant.configure("2") do |config|
       master.vm.provision "master-finishing", type: "shell",
         path: "scripts/finishing.sh", privileged: false
     end
-    lbfirstip += lbipsperhost + 1
+    # lbfirstip += lbipsperhost + 1
   end
   (1...workers).each do |i|
     config.vm.define "node-#{i}" do |node|
-      node.vm.provider "virtualbox" do |vb|
-        vb.cpus = "#{vmscpu * 2}"
-        # vb.memory = "#{vmsmem * 2}"
-      end
+      # node.vm.provider "virtualbox" do |vb|
+      #   vb.cpus = "#{vmscpu * 2}"
+      #   # vb.memory = "#{vmsmem * 2}"
+      # end
       node.vm.hostname = "node-#{i}.local"
       node.vm.network "private_network", ip: ipbase + ".#{firstip + i}"
 
       node.vm.provision "worker#{i}-common", type: "shell",
         env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
-          "nodeip" => ipbase + ".#{firstip + i}",
-          "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},
+          "nodeip" => ipbase + ".#{firstip + i}"},
         path: "scripts/common.sh", privileged: true
 
       node.vm.provision "reset", type: "shell", reset: true
       node.vm.provision "worker#{i}-workers", type: "shell",
         env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
-          "nodeip" => ipbase + ".#{firstip + i}",
-          "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},
+          "nodeip" => ipbase + ".#{firstip + i}"},
         path: "scripts/workers.sh", privileged: false
-      lbfirstip += lbipsperhost + 1
     end
   end
   if workers >= 1
     config.vm.define "node-#{workers}" do |node|
-      node.vm.provider "virtualbox" do |vb|
-        vb.cpus = "#{vmscpu * 2}"
-        # vb.memory = "#{vmsmem * 2}"
-      end
+      # node.vm.provider "virtualbox" do |vb|
+      #   vb.cpus = "#{vmscpu * 2}"
+      #   # vb.memory = "#{vmsmem * 2}"
+      # end
       node.vm.hostname = "node-#{workers}.local"
       node.vm.network "private_network", ip: ipbase + ".#{firstip + workers}"
 
       node.vm.provision "worker#{workers}-common", type: "shell",
         env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
-          "nodeip" => ipbase + ".#{firstip + workers}",
-          "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},
+          "nodeip" => ipbase + ".#{firstip + workers}"},
         path: "scripts/common.sh", privileged: true
 
       node.vm.provision "reset", type: "shell", reset: true
       node.vm.provision "worker#{workers}-workers", type: "shell",
         env: {"ipbase" => ipbase, "firstip" => firstip, "workers" => workers,
-          "nodeip" => ipbase + ".#{firstip + workers}",
-          "lbfirstip" => lbfirstip, "lbipsperhost" => lbipsperhost},  
+          "nodeip" => ipbase + ".#{firstip + workers}"},
         path: "scripts/workers.sh", privileged: false
 
       node.vm.provision "worker#{workers}-finishing", type: "shell",
